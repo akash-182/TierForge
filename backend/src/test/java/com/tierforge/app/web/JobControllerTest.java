@@ -3,6 +3,7 @@ package com.tierforge.app.web;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,15 @@ class JobControllerTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.tierforge.app.enrichment.EnrichmentClient enrichmentClient;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubEnrichmentClient() {
+        org.mockito.Mockito.when(enrichmentClient.enrich(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new com.tierforge.app.enrichment.EnrichResult(1000, 5000.0, 2000));
+    }
 
     @Test
     void uploadsFullSampleFileAndCreatesJob() throws Exception {
@@ -62,5 +72,52 @@ class JobControllerTest extends AbstractIntegrationTest {
     void returnsNotFoundForUnknownJob() throws Exception {
         mockMvc.perform(get("/api/jobs/{id}", java.util.UUID.randomUUID()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void startTransitionsPendingToRunningAndReturnsCounts() throws Exception {
+        byte[] csvBytes = ("store_id,store_name,address,city,state,country\n"
+                + "ST000001,A,Addr,City,State,Country\n")
+                .getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "small.csv", "text/csv", csvBytes);
+        String uploadJson = mockMvc.perform(multipart("/api/jobs").file(file))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String jobId = com.jayway.jsonpath.JsonPath.read(uploadJson, "$.id");
+
+        mockMvc.perform(post("/api/jobs/{id}/start", jobId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status", is("RUNNING")))
+                .andExpect(jsonPath("$.pending", is(1)));
+    }
+
+    @Test
+    void startTwiceReturnsConflict() throws Exception {
+        byte[] csvBytes = ("store_id,store_name,address,city,state,country\n"
+                + "ST000001,A,Addr,City,State,Country\n")
+                .getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "small.csv", "text/csv", csvBytes);
+        String uploadJson = mockMvc.perform(multipart("/api/jobs").file(file))
+                .andReturn().getResponse().getContentAsString();
+        String jobId = com.jayway.jsonpath.JsonPath.read(uploadJson, "$.id");
+
+        mockMvc.perform(post("/api/jobs/{id}/start", jobId)).andExpect(status().isOk());
+        mockMvc.perform(post("/api/jobs/{id}/start", jobId)).andExpect(status().isConflict());
+    }
+
+    @Test
+    void listStoreUnitsFiltersByStatus() throws Exception {
+        byte[] csvBytes = ("store_id,store_name,address,city,state,country\n"
+                + "ST000001,A,Addr,City,State,Country\n")
+                .getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "small.csv", "text/csv", csvBytes);
+        String uploadJson = mockMvc.perform(multipart("/api/jobs").file(file))
+                .andReturn().getResponse().getContentAsString();
+        String jobId = com.jayway.jsonpath.JsonPath.read(uploadJson, "$.id");
+
+        mockMvc.perform(get("/api/jobs/{id}/store-units", jobId).param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].storeId", is("ST000001")))
+                .andExpect(jsonPath("$[0].status", is("PENDING")));
     }
 }

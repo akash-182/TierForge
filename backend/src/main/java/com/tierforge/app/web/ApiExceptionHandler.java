@@ -20,4 +20,9 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", "Job not found: " + ex.getJobId()));
     }
+
+    @ExceptionHandler(JobNotStartableException.class)
+    public ResponseEntity<Map<String, String>> handleJobNotStartable(JobNotStartableException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
 }

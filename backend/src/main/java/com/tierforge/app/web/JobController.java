@@ -1,7 +1,12 @@
 package com.tierforge.app.web;
 
+import com.tierforge.app.enrichment.EnrichmentOrchestrator;
 import com.tierforge.app.job.Job;
 import com.tierforge.app.job.JobRepository;
+import com.tierforge.app.job.JobStatus;
+import com.tierforge.app.job.StoreUnit;
+import com.tierforge.app.job.StoreUnitRepository;
+import com.tierforge.app.job.StoreUnitStatus;
 import com.tierforge.app.upload.CsvValidationException;
 import com.tierforge.app.upload.JobUploadService;
 import java.io.IOException;
@@ -24,10 +29,18 @@ public class JobController {
 
     private final JobUploadService jobUploadService;
     private final JobRepository jobRepository;
+    private final StoreUnitRepository storeUnitRepository;
+    private final EnrichmentOrchestrator orchestrator;
 
-    public JobController(JobUploadService jobUploadService, JobRepository jobRepository) {
+    public JobController(
+            JobUploadService jobUploadService,
+            JobRepository jobRepository,
+            StoreUnitRepository storeUnitRepository,
+            EnrichmentOrchestrator orchestrator) {
         this.jobUploadService = jobUploadService;
         this.jobRepository = jobRepository;
+        this.storeUnitRepository = storeUnitRepository;
+        this.orchestrator = orchestrator;
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -41,12 +54,41 @@ public class JobController {
         }
 
         Job job = jobUploadService.createJobFromCsv(filename, file.getInputStream());
-        return ResponseEntity.status(HttpStatus.CREATED).body(JobResponse.from(job));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(job));
+    }
+
+    @PostMapping("/{id}/start")
+    public ResponseEntity<JobResponse> startJob(@PathVariable UUID id) {
+        Job job = jobRepository.findById(id).orElseThrow(() -> new JobNotFoundException(id));
+        if (job.getStatus() != JobStatus.PENDING) {
+            throw new JobNotStartableException(id, job.getStatus());
+        }
+        job.setStatus(JobStatus.RUNNING);
+        jobRepository.save(job);
+        orchestrator.startJob(id);
+        return ResponseEntity.ok(toResponse(job));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<JobResponse> getJob(@PathVariable UUID id) {
         Job job = jobRepository.findById(id).orElseThrow(() -> new JobNotFoundException(id));
-        return ResponseEntity.ok(JobResponse.from(job));
+        return ResponseEntity.ok(toResponse(job));
+    }
+
+    @GetMapping("/{id}/store-units")
+    public ResponseEntity<List<StoreUnitResponse>> listStoreUnits(
+            @PathVariable UUID id, @RequestParam(required = false) StoreUnitStatus status) {
+        if (!jobRepository.existsById(id)) {
+            throw new JobNotFoundException(id);
+        }
+        List<StoreUnit> units = status != null
+                ? storeUnitRepository.findByJobIdAndStatus(id, status)
+                : storeUnitRepository.findByJobId(id);
+        return ResponseEntity.ok(units.stream().map(StoreUnitResponse::from).toList());
+    }
+
+    private JobResponse toResponse(Job job) {
+        StoreUnitCounts counts = StoreUnitCounts.from(storeUnitRepository.countByStatusForJob(job.getId()));
+        return JobResponse.from(job, counts);
     }
 }
