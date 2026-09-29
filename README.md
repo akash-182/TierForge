@@ -56,6 +56,19 @@ Gradle itself does not need to be installed — both `simulator/` and
    Returns the created job as JSON. Fetch it again with
    `curl http://localhost:8090/api/jobs/<id>`.
 
+5. **Start the enrichment job and watch it progress:**
+   ```
+   curl -X POST http://localhost:8090/api/jobs/<id>/start
+   curl http://localhost:8090/api/jobs/<id>
+   ```
+   The second call's `pending`/`inProgress`/`succeeded`/`failed` counts update as the job runs — at
+   5 requests/sec, a 5,000-store job takes 15+ minutes. Poll it again anytime.
+
+   To see why any store failed:
+   ```
+   curl "http://localhost:8090/api/jobs/<id>/store-units?status=FAILED"
+   ```
+
 ## Running tests
 
 ```
@@ -69,9 +82,9 @@ still needs to be running, though).
 
 ## Project status
 
-- Done: Foundation — schema, CSV upload, job creation.
-- Not yet built: enrichment job engine (calls the simulator, handles rate
-  limits/retries/timeouts), scoring & tiering engine, React frontend/dashboard.
+- Done: Foundation (schema, CSV upload, job creation) and the enrichment job engine (rate-limited,
+  retrying, self-healing worker pool with progress/failure reporting).
+- Not yet built: scoring & tiering engine, React frontend/dashboard.
 
 ## Architecture notes
 
@@ -90,11 +103,16 @@ still needs to be running, though).
   manually in `AbstractIntegrationTest`'s static initializer) rather than
   `@Testcontainers`/`@Container`, which restarts a container per test class
   even for a field inherited from a shared base class.
+- The enrichment engine claims each `store_unit` with a fresh random
+  `lease_token` (an atomic `UPDATE ... RETURNING`, safe under concurrent
+  claimers via Postgres's own row locking). Every outcome write is
+  conditional on that exact token — a response that arrives late, after its
+  unit has already been reclaimed and retried, finds its token stale and
+  silently no-ops instead of corrupting the newer attempt's result.
 
-## Known limitations (Foundation stage)
+## Known limitations
 
-- No enrichment, scoring, or frontend yet — CSV upload only creates
-  `PENDING` units; nothing processes them yet.
+- No scoring/tiering or frontend yet.
 - Running multiple jobs concurrently and resuming a job across a process
   restart are out of scope for the whole exercise.
 - Default ports (5432 for Postgres, 8080 for the backend) were remapped to
