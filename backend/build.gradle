@@ -18,7 +18,7 @@ repositories {
 }
 
 ext {
-    set('testcontainersVersion', "1.20.1")
+    set('testcontainersVersion', "1.21.4")
 }
 
 dependencies {
@@ -43,4 +43,8 @@ dependencyManagement {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Works around a Docker-Desktop-for-Mac quirk where Testcontainers' Ryuk
+    // sidecar fails to mount the Docker socket. Containers still get cleaned
+    // up via the JUnit5 extension's normal lifecycle without Ryuk.
+    environment 'TESTCONTAINERS_RYUK_DISABLED', 'true'
 }
