@@ -1,0 +1,61 @@
+package com.tierforge.app.enrichment;
+
+import com.tierforge.app.job.ClaimedUnit;
+import com.tierforge.app.job.EnrichmentResult;
+import com.tierforge.app.job.EnrichmentResultRepository;
+import com.tierforge.app.job.StoreUnitRepository;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import java.time.OffsetDateTime;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class EnrichmentWorker {
+
+    private final StoreUnitRepository storeUnitRepository;
+    private final EnrichmentResultRepository enrichmentResultRepository;
+    private final EnrichmentClient enrichmentClient;
+    private final RateLimiter rateLimiter;
+    private final EnrichmentProperties properties;
+
+    public EnrichmentWorker(
+            StoreUnitRepository storeUnitRepository,
+            EnrichmentResultRepository enrichmentResultRepository,
+            EnrichmentClient enrichmentClient,
+            RateLimiter rateLimiter,
+            EnrichmentProperties properties) {
+        this.storeUnitRepository = storeUnitRepository;
+        this.enrichmentResultRepository = enrichmentResultRepository;
+        this.enrichmentClient = enrichmentClient;
+        this.rateLimiter = rateLimiter;
+        this.properties = properties;
+    }
+
+    public void processClaimedUnit(ClaimedUnit unit) {
+        try {
+            RateLimiter.waitForPermission(rateLimiter);
+            EnrichResult result = enrichmentClient.enrich(new EnrichRequest(
+                    unit.storeId(), unit.storeName(), unit.address(), unit.city(), unit.state()));
+            applySuccess(unit.id(), unit.leaseToken(), result);
+        } catch (EnrichmentCallException e) {
+            applyFailureOrRequeue(unit.id(), unit.leaseToken(), e.getMessage());
+        } catch (Exception e) {
+            applyFailureOrRequeue(unit.id(), unit.leaseToken(), "Unexpected error: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    void applySuccess(UUID unitId, UUID leaseToken, EnrichResult result) {
+        int updated = storeUnitRepository.markSucceeded(unitId, leaseToken);
+        if (updated == 1) {
+            enrichmentResultRepository.save(new EnrichmentResult(
+                    UUID.randomUUID(), unitId, result.footfall(), result.revenue(), result.sqft(),
+                    OffsetDateTime.now()));
+        }
+    }
+
+    void applyFailureOrRequeue(UUID unitId, UUID leaseToken, String error) {
+        storeUnitRepository.markFailedOrRequeue(unitId, leaseToken, error, properties.maxAttempts());
+    }
+}
