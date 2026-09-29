@@ -1,0 +1,249 @@
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app-header {
+  margin-bottom: 8px;
+}
+
+.app-header p {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.reset-link {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font-size: 14px;
+}
+
+.reset-link:hover {
+  color: var(--accent-hover);
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-list,
+.error-text {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.error-list {
+  list-style: disc;
+  padding-left: 30px;
+}
+
+/* Job progress */
+
+.progress {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 16px 0 0;
+}
+
+.counts dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.counts dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.failed-list {
+  margin-top: 20px;
+}
+
+/* Scoring form */
+
+.scoring-form {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+.metric-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.metric-row input {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.weight-sum {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.weight-sum.ok {
+  color: var(--large);
+}
+
+.weight-sum.bad {
+  color: var(--danger);
+}
+
+.scoring-form button {
+  align-self: flex-start;
+}
+
+/* Dashboard */
+
+.tier-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0 20px;
+}
+
+.tier-tile {
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border);
+}
+
+.tier-count {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.tier-large .tier-count {
+  color: var(--large);
+}
+
+.tier-medium .tier-count {
+  color: var(--medium);
+}
+
+.tier-small .tier-count {
+  color: var(--small);
+}
+
+.tier-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.tier-filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.tier-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.tier-badge-large {
+  color: var(--large);
+  background: color-mix(in srgb, var(--large) 15%, transparent);
+}
+
+.tier-badge-medium {
+  color: var(--medium);
+  background: color-mix(in srgb, var(--medium) 15%, transparent);
+}
+
+.tier-badge-small {
+  color: var(--small);
+  background: color-mix(in srgb, var(--small) 15%, transparent);
+}

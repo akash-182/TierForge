@@ -8,7 +8,7 @@ This repo contains three pieces, run together locally:
 - `simulator/` — the provided flaky enrichment API (do not modify; see
   `simulator/README.md` for its contract).
 - `backend/` — the TierForge Spring Boot application.
-- `frontend/` — the TierForge React app (not yet built — see project status).
+- `frontend/` — the TierForge React app (see `frontend/README.md`).
 
 ## Prerequisites
 
@@ -19,6 +19,8 @@ This repo contains three pieces, run together locally:
 
 Gradle itself does not need to be installed — both `simulator/` and
 `backend/` ship their own Gradle wrapper.
+
+For the frontend: `cd frontend && npm install` once, then `npm run dev`.
 
 ## Running everything locally
 
@@ -84,6 +86,16 @@ Gradle itself does not need to be installed — both `simulator/` and
    curl "http://localhost:8090/api/jobs/<id>/scores?tier=LARGE"
    ```
 
+7. **Or skip the curl commands and use the UI** (in another terminal):
+   ```
+   cd frontend
+   npm install   # first time only
+   npm run dev
+   ```
+   Open the printed local URL (defaults to http://localhost:5173, picks the next free port if
+   taken). Walks through all of steps 4-6 above — upload, start, watch progress, configure
+   scoring, view the dashboard — with the backend running from step 3.
+
 ## Running tests
 
 ```
@@ -97,10 +109,10 @@ still needs to be running, though).
 
 ## Project status
 
-- Done: Foundation (schema, CSV upload, job creation), the enrichment job engine (rate-limited,
-  retrying, self-healing worker pool with progress/failure reporting), and the scoring & tiering
-  engine (configurable bars/weights/thresholds, fast and safely re-runnable without re-enriching).
-- Not yet built: React frontend/dashboard.
+All four steps of the exercise are built: Foundation (schema, CSV upload, job creation), the
+enrichment job engine (rate-limited, retrying, self-healing worker pool with progress/failure
+reporting), the scoring & tiering engine (configurable bars/weights/thresholds, fast and safely
+re-runnable without re-enriching), and the React frontend/dashboard covering the full flow.
 
 ## Architecture notes
 
@@ -133,12 +145,17 @@ still needs to be running, though).
   context, and Hibernate's default flush order runs inserts before deletes
   regardless of call order, which would otherwise violate the table's
   unique constraint on a re-run).
+- The frontend (Vite) proxies `/api/*` to the backend in dev (`frontend/vite.config.ts`) instead
+  of configuring CORS on the backend — one less moving part for local development.
 
 ## Known limitations
 
-- No frontend yet.
 - Running multiple jobs concurrently and resuming a job across a process
   restart are out of scope for the whole exercise.
+- The frontend assumes a single job at a time (matching the backend's own
+  in-scope constraint) and keeps job state in memory only — refreshing the
+  page loses track of the current job (you'd need its id to pick back up via
+  the API directly).
 - Default ports (5432 for Postgres, 8080 for the backend) were remapped to
   5433/8090 to avoid local port conflicts on the machine this was built on;
   adjust back if your environment doesn't have that conflict.
