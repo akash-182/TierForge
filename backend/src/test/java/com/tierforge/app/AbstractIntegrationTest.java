@@ -2,6 +2,7 @@ package com.tierforge.app;
 
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 // Deliberately NOT using @Testcontainers/@Container: that JUnit5 extension manages container
@@ -10,6 +11,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 // seconds of each other under Docker Desktop's resource limits caused earlier containers'
 // connections to silently die mid-suite. The documented fix for sharing one container across
 // multiple test classes is this "singleton container" pattern: start it once, manually, here.
+@ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
