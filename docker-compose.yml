@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: tierforge-postgres
+    environment:
+      POSTGRES_DB: tierforge
+      POSTGRES_USER: tierforge
+      POSTGRES_PASSWORD: tierforge
+    ports:
+      - "5433:5432"
+    volumes:
+      - tierforge-pgdata:/var/lib/postgresql/data
+
+volumes:
+  tierforge-pgdata:
