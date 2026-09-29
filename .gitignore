@@ -1,0 +1,13 @@
+# Java / Gradle (simulator/, backend/)
+build/
+.gradle/
+*.class
+
+# Node / React (frontend/)
+node_modules/
+dist/
+
+# OS / IDE
+.DS_Store
+.idea/
+*.iml
