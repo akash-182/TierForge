@@ -69,6 +69,21 @@ Gradle itself does not need to be installed — both `simulator/` and
    curl "http://localhost:8090/api/jobs/<id>/store-units?status=FAILED"
    ```
 
+6. **Configure scoring & tiering, then view the dashboard:**
+   ```
+   curl -X POST http://localhost:8090/api/jobs/<id>/scoring \
+     -H "Content-Type: application/json" \
+     -d '{"footfallBar":15000,"footfallWeight":50,"revenueBar":150000,"revenueWeight":30,"sizeBar":8000,"sizeWeight":20,"tierLargeThreshold":70,"tierMediumThreshold":40}'
+   ```
+   Weights must sum to 100. Returns the tier breakdown (Large/Medium/Small counts) immediately —
+   this never calls the enrichment API, only reads data already fetched in step 5, so it's fast and
+   safe to resubmit anytime you want to try different bars/weights/thresholds.
+
+   List scored stores, optionally filtered by tier:
+   ```
+   curl "http://localhost:8090/api/jobs/<id>/scores?tier=LARGE"
+   ```
+
 ## Running tests
 
 ```
@@ -82,9 +97,10 @@ still needs to be running, though).
 
 ## Project status
 
-- Done: Foundation (schema, CSV upload, job creation) and the enrichment job engine (rate-limited,
-  retrying, self-healing worker pool with progress/failure reporting).
-- Not yet built: scoring & tiering engine, React frontend/dashboard.
+- Done: Foundation (schema, CSV upload, job creation), the enrichment job engine (rate-limited,
+  retrying, self-healing worker pool with progress/failure reporting), and the scoring & tiering
+  engine (configurable bars/weights/thresholds, fast and safely re-runnable without re-enriching).
+- Not yet built: React frontend/dashboard.
 
 ## Architecture notes
 
@@ -109,10 +125,18 @@ still needs to be running, though).
   conditional on that exact token — a response that arrives late, after its
   unit has already been reclaimed and retried, finds its token stale and
   silently no-ops instead of corrupting the newer attempt's result.
+- Scoring/tiering is a pure read-then-compute step over `store_units` +
+  `enrichment_results` — it never calls the enrichment API, and each
+  resubmission fully replaces the job's prior `store_scores` rows (a bulk
+  `@Modifying` delete followed by a fresh insert, not the derived
+  `deleteBy...` form — that form only queues removal in the persistence
+  context, and Hibernate's default flush order runs inserts before deletes
+  regardless of call order, which would otherwise violate the table's
+  unique constraint on a re-run).
 
 ## Known limitations
 
-- No scoring/tiering or frontend yet.
+- No frontend yet.
 - Running multiple jobs concurrently and resuming a job across a process
   restart are out of scope for the whole exercise.
 - Default ports (5432 for Postgres, 8080 for the backend) were remapped to

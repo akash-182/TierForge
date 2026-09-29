@@ -1,5 +1,6 @@
 package com.tierforge.app.web;
 
+import com.tierforge.app.scoring.ScoringValidationException;
 import com.tierforge.app.upload.CsvValidationException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -24,5 +25,15 @@ public class ApiExceptionHandler {
     @ExceptionHandler(JobNotStartableException.class)
     public ResponseEntity<Map<String, String>> handleJobNotStartable(JobNotStartableException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ScoringValidationException.class)
+    public ResponseEntity<Map<String, String>> handleScoringValidation(ScoringValidationException ex) {
+        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ScoringNotConfiguredException.class)
+    public ResponseEntity<Map<String, String>> handleScoringNotConfigured(ScoringNotConfiguredException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
     }
 }
