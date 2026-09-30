@@ -137,6 +137,16 @@ re-runnable without re-enriching), and the React frontend/dashboard covering the
   conditional on that exact token — a response that arrives late, after its
   unit has already been reclaimed and retried, finds its token stale and
   silently no-ops instead of corrupting the newer attempt's result.
+- Each orchestrator poll tick claims at most `rateLimitPerSecond *
+  leaseDurationSeconds` units (not every eligible unit at once). Claiming
+  unboundedly — e.g. all 5,000 units of a large job in one shot — means most
+  of them just sit queued for a rate-limiter permit until their lease
+  expires before ever attempting a real call; they get reclaimed (bumping
+  `attempt_count`) without a genuine outcome, and once attempts run out
+  they're permanently stuck: unclaimable, but never marked `FAILED` either.
+  This was found via a real production-scale run, not caught by tests until
+  a dedicated regression test (`EnrichmentOrchestratorHighContentionTest`)
+  reproduced the same imbalance at a small scale via property overrides.
 - Scoring/tiering is a pure read-then-compute step over `store_units` +
   `enrichment_results` — it never calls the enrichment API, and each
   resubmission fully replaces the job's prior `store_scores` rows (a bulk
