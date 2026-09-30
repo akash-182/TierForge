@@ -18,7 +18,18 @@ public class StoreUnitClaimDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public List<ClaimedUnit> claimBatch(UUID jobId, long leaseSeconds, int maxAttempts) {
+    /**
+     * Claims up to {@code maxToClaim} eligible units. The caller is responsible for keeping
+     * {@code maxToClaim} in line with how many units the rate limiter can actually service
+     * within one lease window (see EnrichmentOrchestrator) — claiming more than that just means
+     * units sit queued for a permit until their lease expires, get reclaimed before ever
+     * attempting a real call, and eventually exhaust attempt_count without ever producing a
+     * genuine outcome, leaving them permanently stuck (unclaimable, never marked FAILED).
+     */
+    public List<ClaimedUnit> claimBatch(UUID jobId, long leaseSeconds, int maxAttempts, int maxToClaim) {
+        if (maxToClaim <= 0) {
+            return List.of();
+        }
         String sql = """
                 UPDATE store_units
                 SET status = 'IN_PROGRESS',
@@ -26,9 +37,15 @@ public class StoreUnitClaimDao {
                     claimed_at = now(),
                     lease_expires_at = now() + make_interval(secs => ?),
                     attempt_count = attempt_count + 1
-                WHERE job_id = ?
-                  AND attempt_count < ?
-                  AND (status = 'PENDING' OR (status = 'IN_PROGRESS' AND lease_expires_at < now()))
+                WHERE id IN (
+                    SELECT id FROM store_units
+                    WHERE job_id = ?
+                      AND attempt_count < ?
+                      AND (status = 'PENDING' OR (status = 'IN_PROGRESS' AND lease_expires_at < now()))
+                    ORDER BY claimed_at ASC NULLS FIRST
+                    LIMIT ?
+                    FOR UPDATE SKIP LOCKED
+                )
                 RETURNING id, lease_token, store_id, store_name, address, city, state
                 """;
         return jdbcTemplate.query(
@@ -43,6 +60,7 @@ public class StoreUnitClaimDao {
                         rs.getString("state")),
                 leaseSeconds,
                 jobId,
-                maxAttempts);
+                maxAttempts,
+                maxToClaim);
     }
 }

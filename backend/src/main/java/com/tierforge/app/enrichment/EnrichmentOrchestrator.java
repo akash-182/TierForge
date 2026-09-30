@@ -7,6 +7,7 @@ import com.tierforge.app.job.JobStatus;
 import com.tierforge.app.job.StoreUnitClaimDao;
 import com.tierforge.app.job.StoreUnitRepository;
 import com.tierforge.app.job.StoreUnitStatus;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -55,8 +56,21 @@ public class EnrichmentOrchestrator {
     private void runLoop(UUID jobId) {
         try {
             while (true) {
+                // Cap how much we claim per tick at roughly what the rate limiter can drain
+                // within one lease window. Claiming unboundedly (e.g. all 5,000 units of a big
+                // job in one shot) means most of them just sit queued for a permit until their
+                // lease expires before ever attempting a real call — they get reclaimed
+                // (bumping attempt_count) without ever producing a genuine outcome, and once
+                // attempts run out they're permanently stuck: unclaimable, but never marked
+                // FAILED either, since nothing ever wrote a real result for them.
+                int targetInFlight =
+                        Math.max(1, properties.rateLimitPerSecond() * (int) properties.leaseDuration().toSeconds());
+                long currentInFlight = storeUnitRepository.countByJobIdAndStatusAndLeaseExpiresAtAfter(
+                        jobId, StoreUnitStatus.IN_PROGRESS, OffsetDateTime.now());
+                int room = (int) Math.max(0, targetInFlight - currentInFlight);
+
                 List<ClaimedUnit> claimed = claimDao.claimBatch(
-                        jobId, properties.leaseDuration().toSeconds(), properties.maxAttempts());
+                        jobId, properties.leaseDuration().toSeconds(), properties.maxAttempts(), room);
                 for (ClaimedUnit unit : claimed) {
                     virtualThreadExecutor.execute(() -> worker.processClaimedUnit(unit));
                 }

@@ -37,7 +37,7 @@ class StoreUnitClaimDaoTest extends AbstractIntegrationTest {
                 UUID.randomUUID(), job, "ST2", "B", "Addr", "City", "State", "Country",
                 StoreUnitStatus.SUCCEEDED, OffsetDateTime.now()));
 
-        List<ClaimedUnit> claimed = claimDao.claimBatch(job.getId(), 60, 5);
+        List<ClaimedUnit> claimed = claimDao.claimBatch(job.getId(), 60, 5, 100);
 
         assertThat(claimed).extracting(ClaimedUnit::id).containsExactly(pending.getId());
         assertThat(storeUnitRepository.findById(succeeded.getId()).orElseThrow().getStatus())
@@ -56,9 +56,9 @@ class StoreUnitClaimDaoTest extends AbstractIntegrationTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         CompletableFuture<List<ClaimedUnit>> first =
-                CompletableFuture.supplyAsync(() -> claimDao.claimBatch(job.getId(), 60, 5), executor);
+                CompletableFuture.supplyAsync(() -> claimDao.claimBatch(job.getId(), 60, 5, 100), executor);
         CompletableFuture<List<ClaimedUnit>> second =
-                CompletableFuture.supplyAsync(() -> claimDao.claimBatch(job.getId(), 60, 5), executor);
+                CompletableFuture.supplyAsync(() -> claimDao.claimBatch(job.getId(), 60, 5, 100), executor);
         CompletableFuture.allOf(first, second).join();
         executor.shutdown();
 
@@ -85,12 +85,29 @@ class StoreUnitClaimDaoTest extends AbstractIntegrationTest {
                 UUID.randomUUID(), job, "ST1", "A", "Addr", "City", "State", "Country",
                 StoreUnitStatus.PENDING, OffsetDateTime.now()));
 
-        claimDao.claimBatch(job.getId(), 0, 2); // attempt 1, immediately-expired lease
-        List<ClaimedUnit> secondClaim = claimDao.claimBatch(job.getId(), 60, 2); // attempt 2
+        claimDao.claimBatch(job.getId(), 0, 2, 100); // attempt 1, immediately-expired lease
+        List<ClaimedUnit> secondClaim = claimDao.claimBatch(job.getId(), 60, 2, 100); // attempt 2
         assertThat(secondClaim).hasSize(1);
 
-        List<ClaimedUnit> thirdClaim = claimDao.claimBatch(job.getId(), 60, 2); // attempt_count now 2, >= max
+        List<ClaimedUnit> thirdClaim = claimDao.claimBatch(job.getId(), 60, 2, 100); // attempt_count now 2, >= max
         assertThat(thirdClaim).isEmpty();
+    }
+
+    @Test
+    void capsClaimsAtMaxToClaim() {
+        Job job = jobRepository.save(
+                new Job(UUID.randomUUID(), JobStatus.PENDING, "stores.csv", 10, OffsetDateTime.now()));
+        for (int i = 0; i < 10; i++) {
+            storeUnitRepository.save(new StoreUnit(
+                    UUID.randomUUID(), job, "ST" + i, "Store " + i, "Addr", "City", "State", "Country",
+                    StoreUnitStatus.PENDING, OffsetDateTime.now()));
+        }
+
+        List<ClaimedUnit> claimed = claimDao.claimBatch(job.getId(), 60, 5, 3);
+
+        assertThat(claimed).hasSize(3);
+        assertThat(storeUnitRepository.countByJobIdAndStatusIn(job.getId(), List.of(StoreUnitStatus.PENDING)))
+                .isEqualTo(7);
     }
 
     @Test
@@ -100,7 +117,7 @@ class StoreUnitClaimDaoTest extends AbstractIntegrationTest {
         StoreUnit unit = storeUnitRepository.save(new StoreUnit(
                 UUID.randomUUID(), job, "ST1", "A", "Addr", "City", "State", "Country",
                 StoreUnitStatus.PENDING, OffsetDateTime.now()));
-        List<ClaimedUnit> claimed = claimDao.claimBatch(job.getId(), 60, 5);
+        List<ClaimedUnit> claimed = claimDao.claimBatch(job.getId(), 60, 5, 100);
         UUID realToken = claimed.get(0).leaseToken();
         UUID staleToken = UUID.randomUUID();
 
