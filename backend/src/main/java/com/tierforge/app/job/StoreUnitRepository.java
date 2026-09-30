@@ -36,19 +36,28 @@ public interface StoreUnitRepository extends JpaRepository<StoreUnit, UUID> {
             nativeQuery = true)
     int markSucceeded(@Param("id") UUID id, @Param("leaseToken") UUID leaseToken);
 
+    // On requeue (not terminal failure), sets next_attempt_at to an exponential backoff from now
+    // - base * 2^(attempt_count-1), capped at maxBackoffSeconds - so a retry doesn't get picked
+    // straight back up on the very next poll tick. attempt_count here is the row's current value
+    // (already incremented at claim time), so it reflects the attempt that just failed.
     @Modifying
     @Transactional
     @Query(
             value = "UPDATE store_units SET "
                     + "status = CASE WHEN attempt_count >= :maxAttempts THEN 'FAILED' ELSE 'PENDING' END, "
-                    + "last_error = :error "
+                    + "last_error = :error, "
+                    + "next_attempt_at = CASE WHEN attempt_count >= :maxAttempts THEN NULL ELSE "
+                    + "now() + (LEAST(:maxBackoffSeconds, :baseBackoffSeconds * POWER(2, GREATEST(attempt_count - 1, 0))) "
+                    + "* interval '1 second') END "
                     + "WHERE id = :id AND lease_token = :leaseToken",
             nativeQuery = true)
     int markFailedOrRequeue(
             @Param("id") UUID id,
             @Param("leaseToken") UUID leaseToken,
             @Param("error") String error,
-            @Param("maxAttempts") int maxAttempts);
+            @Param("maxAttempts") int maxAttempts,
+            @Param("baseBackoffSeconds") double baseBackoffSeconds,
+            @Param("maxBackoffSeconds") double maxBackoffSeconds);
 
     interface StatusCount {
         StoreUnitStatus getStatus();

@@ -41,7 +41,10 @@ public class StoreUnitClaimDao {
                     SELECT id FROM store_units
                     WHERE job_id = ?
                       AND attempt_count < ?
-                      AND (status = 'PENDING' OR (status = 'IN_PROGRESS' AND lease_expires_at < now()))
+                      AND (
+                        (status = 'PENDING' AND (next_attempt_at IS NULL OR next_attempt_at <= now()))
+                        OR (status = 'IN_PROGRESS' AND lease_expires_at < now())
+                      )
                     ORDER BY claimed_at ASC NULLS FIRST
                     LIMIT ?
                     FOR UPDATE SKIP LOCKED

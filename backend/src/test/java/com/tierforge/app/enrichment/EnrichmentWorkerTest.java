@@ -11,9 +11,11 @@ import com.tierforge.app.job.Job;
 import com.tierforge.app.job.JobRepository;
 import com.tierforge.app.job.JobStatus;
 import com.tierforge.app.job.StoreUnit;
+import com.tierforge.app.job.StoreUnitClaimDao;
 import com.tierforge.app.job.StoreUnitRepository;
 import com.tierforge.app.job.StoreUnitStatus;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,9 @@ class EnrichmentWorkerTest extends AbstractIntegrationTest {
 
     @Autowired
     private StoreUnitRepository storeUnitRepository;
+
+    @Autowired
+    private StoreUnitClaimDao claimDao;
 
     @Autowired
     private EnrichmentResultRepository enrichmentResultRepository;
@@ -98,6 +103,29 @@ class EnrichmentWorkerTest extends AbstractIntegrationTest {
         StoreUnit unchanged = storeUnitRepository.findById(unit.getId()).orElseThrow();
         assertThat(unchanged.getStatus()).isEqualTo(StoreUnitStatus.SUCCEEDED);
         assertThat(enrichmentResultRepository.findByStoreUnitId(unit.getId())).isEmpty();
+    }
+
+    @Test
+    void failureSetsBackoffThatDelaysReclaim() throws InterruptedException {
+        Job job = jobRepository.save(
+                new Job(UUID.randomUUID(), JobStatus.RUNNING, "stores.csv", 1, OffsetDateTime.now()));
+        StoreUnit unit = storeUnitRepository.save(new StoreUnit(
+                UUID.randomUUID(), job, "ST1", "A", "Addr", "City", "State", "Country",
+                StoreUnitStatus.IN_PROGRESS, OffsetDateTime.now()));
+        UUID leaseToken = UUID.randomUUID();
+        setLeaseToken(unit.getId(), leaseToken);
+        when(enrichmentClient.enrich(any())).thenThrow(new EnrichmentCallException("Upstream 500: boom"));
+
+        worker.processClaimedUnit(new ClaimedUnit(unit.getId(), leaseToken, "ST1", "A", "Addr", "City", "State"));
+
+        // Immediately after failing, the unit is PENDING but its backoff hasn't elapsed yet.
+        List<ClaimedUnit> immediateClaim = claimDao.claimBatch(job.getId(), 60, 5, 10);
+        assertThat(immediateClaim).isEmpty();
+
+        // Test profile's retry-backoff-max is 50ms - wait past it, then it's claimable again.
+        Thread.sleep(100);
+        List<ClaimedUnit> laterClaim = claimDao.claimBatch(job.getId(), 60, 5, 10);
+        assertThat(laterClaim).extracting(ClaimedUnit::id).containsExactly(unit.getId());
     }
 
     @Test

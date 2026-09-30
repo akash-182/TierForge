@@ -56,6 +56,12 @@ public class EnrichmentWorker {
     }
 
     void applyFailureOrRequeue(UUID unitId, UUID leaseToken, String error) {
-        storeUnitRepository.markFailedOrRequeue(unitId, leaseToken, error, properties.maxAttempts());
+        storeUnitRepository.markFailedOrRequeue(
+                unitId,
+                leaseToken,
+                error,
+                properties.maxAttempts(),
+                properties.retryBackoffBase().toMillis() / 1000.0,
+                properties.retryBackoffMax().toMillis() / 1000.0);
     }
 }
