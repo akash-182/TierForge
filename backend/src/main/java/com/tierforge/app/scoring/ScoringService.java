@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ScoringService {
+
+    private static final Logger log = LoggerFactory.getLogger(ScoringService.class);
 
     private final StoreUnitRepository storeUnitRepository;
     private final EnrichmentResultRepository enrichmentResultRepository;
@@ -87,6 +91,14 @@ public class ScoringService {
             scores.add(new StoreScore(UUID.randomUUID(), jobId, unit.getId(), score, tier, OffsetDateTime.now()));
         }
         storeScoreRepository.saveAll(scores);
+
+        Map<StoreTier, Long> byTier = scores.stream()
+                .collect(Collectors.groupingBy(StoreScore::getTier, Collectors.counting()));
+        log.info("Scored job {}: {} stores -> LARGE={}, MEDIUM={}, SMALL={}",
+                jobId, scores.size(),
+                byTier.getOrDefault(StoreTier.LARGE, 0L),
+                byTier.getOrDefault(StoreTier.MEDIUM, 0L),
+                byTier.getOrDefault(StoreTier.SMALL, 0L));
     }
 
     private int scoreFor(EnrichmentResult result, ScoringConfig config) {

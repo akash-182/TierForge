@@ -15,11 +15,15 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class JobUploadService {
+
+    private static final Logger log = LoggerFactory.getLogger(JobUploadService.class);
 
     private final JobRepository jobRepository;
     private final StoreUnitRepository storeUnitRepository;
@@ -56,6 +60,7 @@ public class JobUploadService {
         }
         storeUnitRepository.saveAll(units);
 
+        log.info("Created job {} from '{}' with {} stores", job.getId(), filename, units.size());
         return job;
     }
 }

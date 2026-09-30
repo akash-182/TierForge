@@ -14,11 +14,15 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EnrichmentOrchestrator {
+
+    private static final Logger log = LoggerFactory.getLogger(EnrichmentOrchestrator.class);
 
     private final StoreUnitClaimDao claimDao;
     private final StoreUnitRepository storeUnitRepository;
@@ -47,8 +51,11 @@ public class EnrichmentOrchestrator {
      */
     public boolean startJob(UUID jobId) {
         if (!runningJobs.add(jobId)) {
+            log.warn("startJob({}) called while a processing loop for this job is already running - ignoring",
+                    jobId);
             return false;
         }
+        log.info("Starting enrichment processing loop for job {}", jobId);
         Thread.ofVirtual().name("job-orchestrator-" + jobId).start(() -> runLoop(jobId));
         return true;
     }
@@ -71,6 +78,10 @@ public class EnrichmentOrchestrator {
 
                 List<ClaimedUnit> claimed = claimDao.claimBatch(
                         jobId, properties.leaseDuration().toSeconds(), properties.maxAttempts(), room);
+                if (!claimed.isEmpty()) {
+                    log.debug("Job {}: claimed {}/{} units this tick (targetInFlight={}, currentInFlight={})",
+                            jobId, claimed.size(), room, targetInFlight, currentInFlight);
+                }
                 for (ClaimedUnit unit : claimed) {
                     virtualThreadExecutor.execute(() -> worker.processClaimedUnit(unit));
                 }
@@ -85,6 +96,7 @@ public class EnrichmentOrchestrator {
                 Thread.sleep(properties.orchestratorPollInterval());
             }
         } catch (InterruptedException e) {
+            log.warn("Enrichment processing loop for job {} was interrupted", jobId);
             Thread.currentThread().interrupt();
         } finally {
             runningJobs.remove(jobId);
@@ -96,5 +108,6 @@ public class EnrichmentOrchestrator {
         Job job = jobRepository.findById(jobId).orElseThrow();
         job.setStatus(JobStatus.COMPLETED);
         jobRepository.save(job);
+        log.info("Job {} completed", jobId);
     }
 }
