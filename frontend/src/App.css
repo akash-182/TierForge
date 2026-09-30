@@ -197,6 +197,11 @@ button:disabled {
   font-weight: 700;
 }
 
+.tier-pct {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .tier-large .tier-count {
   color: var(--large);
 }

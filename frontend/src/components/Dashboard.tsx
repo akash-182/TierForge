@@ -21,21 +21,28 @@ export function Dashboard({ jobId, summary }: Props) {
     // summary changes every time scoring is resubmitted — refetch so the list reflects it.
   }, [jobId, tierFilter, summary])
 
+  const { large, medium, small } = summary.tierBreakdown
+  const total = large + medium + small
+  const pct = (count: number) => (total === 0 ? 0 : Math.round((count / total) * 100))
+
   return (
     <section className="card">
       <h2>4. Dashboard</h2>
 
       <div className="tier-breakdown">
         <div className="tier-tile tier-large">
-          <span className="tier-count">{summary.tierBreakdown.large}</span>
+          <span className="tier-count">{large}</span>
+          <span className="tier-pct">{pct(large)}%</span>
           <span>Large</span>
         </div>
         <div className="tier-tile tier-medium">
-          <span className="tier-count">{summary.tierBreakdown.medium}</span>
+          <span className="tier-count">{medium}</span>
+          <span className="tier-pct">{pct(medium)}%</span>
           <span>Medium</span>
         </div>
         <div className="tier-tile tier-small">
-          <span className="tier-count">{summary.tierBreakdown.small}</span>
+          <span className="tier-count">{small}</span>
+          <span className="tier-pct">{pct(small)}%</span>
           <span>Small</span>
         </div>
       </div>
