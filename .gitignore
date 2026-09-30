@@ -11,3 +11,6 @@ dist/
 .DS_Store
 .idea/
 *.iml
+
+# run.sh output
+logs/

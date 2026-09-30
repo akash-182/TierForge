@@ -24,6 +24,20 @@ For the frontend: `cd frontend && npm install` once, then `npm run dev`.
 
 ## Running everything locally
 
+**Quickest path — one script starts Postgres, the simulator, the backend, and
+the frontend together:**
+```
+./run.sh
+```
+It checks prerequisites, waits for each service to come up before starting
+the next, runs `npm install` on first use, and prints each service's URL
+when ready. Logs go to `logs/*.log`. Ctrl+C stops the simulator, backend,
+and frontend (Postgres is left running — `docker compose down` to stop that
+too). Then skip to step 4 below.
+
+**Manual path — same steps, one terminal each (useful if you want to
+restart a single piece without the others):**
+
 1. **Start Postgres:**
    ```
    docker compose up -d
