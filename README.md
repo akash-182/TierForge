@@ -178,15 +178,10 @@ re-runnable without re-enriching), and the React frontend/dashboard covering the
   restart are out of scope for the whole exercise (explicitly called out as
   bonus-only in the spec). Concretely: the orchestrator's processing loop is
   in-memory only, so a job still `RUNNING` when the backend restarts is
-  orphaned — its row stays `RUNNING` forever with nothing re-attaching to it.
-  This doesn't come up in normal use (a real upload-to-dashboard flow never
-  restarts the server mid-job) but can happen during development/testing. If
-  you hit it, there's no automatic recovery; clean it up manually, e.g.:
-  ```sql
-  UPDATE store_units SET status = 'FAILED', last_error = 'Orphaned: backend restarted mid-job'
-    WHERE job_id = '<id>' AND status IN ('PENDING', 'IN_PROGRESS');
-  UPDATE jobs SET status = 'FAILED' WHERE id = '<id>';
-  ```
+  orphaned. On startup the backend marks any such `RUNNING` job (and its
+  unfinished units) `FAILED` (`OrphanedJobCleaner`), so stale jobs no longer
+  linger or starve new ones — but the interrupted job is not resumed; re-upload
+  to run it again.
 - The frontend assumes a single job at a time (matching the backend's own
   in-scope constraint) and keeps job state in memory only — refreshing the
   page loses track of the current job (you'd need its id to pick back up via
