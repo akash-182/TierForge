@@ -25,8 +25,11 @@
   font-size: 14px;
 }
 
-.reset-link:hover {
+.reset-link:hover:not(:disabled) {
+  /* Override the global button:hover background, which would otherwise match this text colour. */
+  background: none;
   color: var(--accent-hover);
+  text-decoration: underline;
 }
 
 .card {

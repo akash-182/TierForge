@@ -1,0 +1,325 @@
+/* Live monitor — independent of the core flow's styles (uses the shared CSS variables only). */
+
+.monitor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.monitor-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.monitor-heading h2 {
+  margin: 0;
+}
+
+.monitor-muted {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.monitor-subtitle {
+  font-size: 14px;
+  margin: 18px 0 8px;
+}
+
+.monitor-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+.monitor-tab {
+  background: none;
+  color: var(--text-muted);
+  border-radius: 6px 6px 0 0;
+  border-bottom: 2px solid transparent;
+}
+
+.monitor-tab:hover:not(:disabled) {
+  background: none;
+  color: var(--text-h);
+}
+
+.monitor-tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.monitor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.monitor-secondary-btn {
+  background: none;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.monitor-secondary-btn:hover:not(:disabled) {
+  background: none;
+  border-color: var(--accent);
+}
+
+.monitor-open-btn {
+  align-self: flex-start;
+  background: none;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.monitor-open-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: white;
+}
+
+/* Job accordion panels */
+
+.monitor-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.monitor-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.monitor-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  color: var(--text);
+  border-radius: 0;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.monitor-panel-header:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.monitor-chevron {
+  transition: transform 0.25s ease;
+  color: var(--text-muted);
+}
+
+.is-open > .monitor-panel-header .monitor-chevron {
+  transform: rotate(90deg);
+}
+
+.monitor-panel-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.monitor-badge {
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+}
+
+.status-running {
+  color: var(--accent);
+}
+
+.status-completed {
+  color: var(--large);
+}
+
+.status-failed {
+  color: var(--danger);
+}
+
+.status-pending {
+  color: var(--small);
+}
+
+.monitor-mini-progress {
+  width: 90px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.monitor-mini-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.monitor-percent {
+  width: 38px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+/* Slide down / up: animate grid row height between 0fr and 1fr */
+
+.monitor-panel-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.is-open > .monitor-panel-body {
+  grid-template-rows: 1fr;
+}
+
+.monitor-panel-inner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0 14px;
+}
+
+.is-open .monitor-panel-inner {
+  padding-bottom: 14px;
+}
+
+.monitor-counts {
+  margin-top: 8px;
+}
+
+.monitor-secondary dd {
+  font-size: 16px;
+}
+
+.monitor-error-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Logs */
+
+.monitor-log-box {
+  height: 360px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.monitor-log-line {
+  display: flex;
+  gap: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.monitor-log-time,
+.monitor-log-logger {
+  color: var(--text-muted);
+  flex: none;
+}
+
+.monitor-log-level {
+  flex: none;
+  width: 44px;
+  font-weight: 600;
+}
+
+.level-warn .monitor-log-level {
+  color: var(--medium);
+}
+
+.level-error .monitor-log-level,
+.level-error .monitor-log-message {
+  color: var(--danger);
+}
+
+/* Failures */
+
+.monitor-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.monitor-reasons li {
+  display: flex;
+  gap: 10px;
+}
+
+.monitor-reason-count {
+  min-width: 44px;
+  font-weight: 600;
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.monitor-table-wrap {
+  overflow-x: auto;
+}
+
+.monitor-times {
+  margin: 12px 0 0;
+}
+
+.monitor-filter {
+  display: inline-flex;
+}
+
+.monitor-filter-btn {
+  border-radius: 0;
+  margin-left: -1px;
+}
+
+.monitor-filter-btn:first-child {
+  border-radius: 6px 0 0 6px;
+  margin-left: 0;
+}
+
+.monitor-filter-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.monitor-filter-btn.is-active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  position: relative;
+}
+
+.monitor-filter-btn.is-active:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.monitor-filter-note {
+  margin: 0 0 10px;
+}
+
+.monitor-filter-note .reset-link {
+  font-size: 13px;
+}

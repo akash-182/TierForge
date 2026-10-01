@@ -4,11 +4,13 @@ import { UploadForm } from './components/UploadForm'
 import { JobProgress } from './components/JobProgress'
 import { ScoringConfigForm } from './components/ScoringConfigForm'
 import { Dashboard } from './components/Dashboard'
+import { MonitorPage } from './monitor/MonitorPage'
 import type { JobResponse, ScoringSummaryResponse } from './api/types'
 
 function App() {
   const [job, setJob] = useState<JobResponse | null>(null)
   const [scoringSummary, setScoringSummary] = useState<ScoringSummaryResponse | null>(null)
+  const [showMonitor, setShowMonitor] = useState(false)
 
   function handleUploaded(newJob: JobResponse) {
     setJob(newJob)
@@ -31,9 +33,11 @@ function App() {
         <p>Resilient bulk store scoring &amp; tiering</p>
       </header>
 
-      {!job && <UploadForm onUploaded={handleUploaded} />}
+      {showMonitor && <MonitorPage onBack={() => setShowMonitor(false)} />}
 
-      {job && (
+      {!showMonitor && !job && <UploadForm onUploaded={handleUploaded} />}
+
+      {!showMonitor && job && (
         <>
           <button type="button" className="reset-link" onClick={handleReset}>
             ← Start a new job
@@ -42,11 +46,17 @@ function App() {
         </>
       )}
 
-      {job && job.status === 'COMPLETED' && (
+      {!showMonitor && (
+        <button type="button" className="monitor-open-btn" onClick={() => setShowMonitor(true)}>
+          Live monitor
+        </button>
+      )}
+
+      {!showMonitor && job && job.status === 'COMPLETED' && (
         <ScoringConfigForm jobId={job.id} onScored={setScoringSummary} />
       )}
 
-      {job && scoringSummary && <Dashboard jobId={job.id} summary={scoringSummary} />}
+      {!showMonitor && job && scoringSummary && <Dashboard jobId={job.id} summary={scoringSummary} />}
     </div>
   )
 }

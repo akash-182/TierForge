@@ -121,6 +121,23 @@ Tests use Testcontainers to start their own throwaway Postgres — no need to
 have `docker compose up` running first for `./gradlew test` itself (Docker
 still needs to be running, though).
 
+## Live monitor
+
+An optional, read-only page for watching enrichment as it happens. Click **Live monitor**
+below the upload card (or below the job card once a job is running). It is independent of the
+upload → enrich → score flow: it lives in `frontend/src/monitor/` and
+`backend/.../monitor/`, and never calls the enrichment API.
+
+- **Jobs** — one collapsible (slide up/down) panel per job in the database, running jobs first:
+  live counts, progress, retrying jobs, stale leases, throughput and ETA, recent errors.
+- **Logs** — the backend's own log lines, streamed live (level filter, pause, clear).
+- **Failures** — failure reasons with counts, plus the most recent errors across all jobs.
+
+Endpoints: `GET /api/monitor/jobs`, `/api/monitor/logs?after=<seq>`,
+`/api/monitor/errors?jobId=`. Logs come from an in-memory buffer of the last 500 lines, so
+they reset when the backend restarts. There is no auth (out of scope for this exercise), so
+treat the page as a development tool.
+
 ## Project status
 
 All four steps of the exercise are built: Foundation (schema, CSV upload, job creation), the
